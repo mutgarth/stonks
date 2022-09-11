@@ -5,6 +5,7 @@ sys.path.append('..')
 from utils import printProgressBar
 
 def ret_tickers():
+    print('Retrieving tickers...')
     con = db_connect()
     cursor = con.cursor()
     cursor.execute("SELECT id, ticker FROM symbol")
@@ -12,7 +13,7 @@ def ret_tickers():
     con.close()
     return [(d[0], d[1]) for d in data]
 
-def ret_one_symbol(symbol):
+def ret_adj_close(symbol):
     con = db_connect()
     sql = """SELECT dp.price_date, dp.adj_close_price
             FROM symbol AS sym
@@ -26,8 +27,7 @@ def ret_one_symbol(symbol):
     con.close()
     return dataframe
 
-def ret_last_price_date():
-    tickers = ret_tickers()
+def ret_last_price_date(tickers):
     con = db_connect()
     sql = """SELECT dp.price_date, ticker
             FROM symbol AS sym
@@ -35,7 +35,10 @@ def ret_last_price_date():
             ON dp.symbol_id = sym.id
             WHERE sym.ticker = '%s'
             ORDER BY dp.price_date DESC LIMIT 1;"""
-    dict_data = {}
+    tup_data = []
+    it = 0
+    printProgressBar(0, len(tickers), prefix = 'Retrieving data:', suffix = 'Done', length = 50)
+
     for t in tickers:
         try:
             symbol = t[-1]
@@ -45,12 +48,13 @@ def ret_last_price_date():
             data = cursor.fetchall()
             symbol = data[-1][1]
             date = data[-1][0]
-            dict_data[symbol] = date
+            tup_data.append((t[0],date, symbol))
         except:
-            print(t[-1])
             pass
+        it += 1
+        printProgressBar(it,len(tickers), prefix='Retrieving data:', suffix='Done',length=50)
     con.close()
-    return dict_data
+    return tup_data
 
 def check_if_exists(tickers):
     con = db_connect()
