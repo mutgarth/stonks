@@ -1,21 +1,17 @@
 import yfinance as yf
 from db_connect import db_connect
+from db_retrieving import ret_tickers, check_if_exists
 import datetime
 import pandas_datareader.data as pdr
+import numpy 
+import math
 
 def update_tup_to_datetime(tup):
    lst = list(tup)
    lst[1] = lst[1].to_pydatetime().date()
    lst[2] = lst[2].to_pydatetime().date()
    lst[3] = lst[3].to_pydatetime().date()
-
    return tuple(lst)
-
-def get_db_tickers():
-    cursor = con.cursor()
-    cursor.execute("SELECT id, ticker FROM symbol")
-    data = cursor.fetchall()
-    return [(d[0], d[1]) for d in data]
 
 def get_hist_data(ticker):
     yf.pdr_override()
@@ -23,7 +19,6 @@ def get_hist_data(ticker):
     return trade_data
 
 def insert_price_db(daily_data):
-
     cursor = con.cursor()
     columns_name = """symbol_id, price_date, created_date, last_updated_date, open_price,
                     high_price, low_price, close_price, adj_close_price, volume"""
@@ -32,19 +27,45 @@ def insert_price_db(daily_data):
     cursor.executemany(insert_query, daily_data)
     con.commit()
 
+def handling_nan(dataframe):
+    """
+    The missing values were handled as proposed by Prof. Mazin A. M. Al Janabi.
+    It was previosly verified that the prices were availabe for some tickers,
+    but not for others, therefore the missing price was calculate from the geometric
+    mean of the previous and the following price.
+
+    P_t = sqrt(P_{t-1} * P_{t+1})
+    """
+    for c in dataframe.columns[:-1]:
+        for i in range(0,len(dataframe[c])):
+            if numpy.isnan(dataframe[c][i]):
+                dataframe[c][i] = math.sqrt(dataframe[c][i-1] * dataframe[c][i+1])
+    return dataframe.replace({numpy.nan: None})
+
+def print_db_stats(count_new):
+    print('--------------------------')
+    print('%s new tickers were added.' % count_new)
+    print('--------------------------')
 
 if __name__ == "__main__":
     
     con = db_connect()
-    tickers = get_db_tickers()
-
+    tickers = ret_tickers()
+    tickers = check_if_exists(tickers)
     failed_tickers = []
+    count = 0
 
     for t in tickers:
-        print(t[1])
+        print('Trying to download %s data' % t[1])
         try:
             daily_data = get_hist_data(t[1])
-            
+            if 'Empty DataFrame' in str(daily_data):
+                raise Exception()
+            else:
+                count+=1
+
+            daily_data = handling_nan(daily_data)
+
             now = datetime.datetime.utcnow()
             daily_data = daily_data.rename_axis('date').reset_index()
             daily_data.insert(0,'symbol_id',t[0])
@@ -55,17 +76,15 @@ if __name__ == "__main__":
 
             for i in range(0,len(daily_data)):
                 daily_data[i] = update_tup_to_datetime(daily_data[i])  
-            
         
             insert_price_db(daily_data)
 
-        except Exception as e:
-            print('Error for: %s' % e)
+        except Exception:
             failed_tickers.append(t[1])
             pass
             
     con.close()
-
+    print(print_db_stats(count))
     print(failed_tickers)
 
 

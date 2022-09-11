@@ -2,3 +2,4 @@ vars.env
 stonks_wspace.code-workspace
 /data
 /src/data/data_scrap.py
+/notebook/playground.ipynb
