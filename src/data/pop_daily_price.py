@@ -18,7 +18,7 @@ def get_hist_data(ticker):
     trade_data = pdr.get_data_yahoo(ticker, period='max', interval='1d', group_by = 'column')
     return trade_data
 
-def insert_price_db(daily_data):
+def insert_price_db(con, daily_data):
     cursor = con.cursor()
     columns_name = """symbol_id, price_date, created_date, last_updated_date, open_price,
                     high_price, low_price, close_price, adj_close_price, volume"""
@@ -42,9 +42,11 @@ def handling_nan(dataframe):
                 dataframe[c][i] = math.sqrt(dataframe[c][i-1] * dataframe[c][i+1])
     return dataframe.replace({numpy.nan: None})
 
-def print_db_stats(count_new):
+def print_db_stats(count_new, new_tickers):
     print('--------------------------')
-    print('%s new tickers were added.' % count_new)
+    print('%s new tickers were added:' % count_new)
+    for ticker in new_tickers:
+        print(ticker)
     print('--------------------------')
 
 if __name__ == "__main__":
@@ -53,6 +55,7 @@ if __name__ == "__main__":
     tickers = ret_tickers()
     tickers = check_if_exists(tickers)
     failed_tickers = []
+    success_tickers = []
     count = 0
 
     for t in tickers:
@@ -63,6 +66,7 @@ if __name__ == "__main__":
                 raise Exception()
             else:
                 count+=1
+                success_tickers.append(t[1])
 
             daily_data = handling_nan(daily_data)
 
@@ -77,14 +81,14 @@ if __name__ == "__main__":
             for i in range(0,len(daily_data)):
                 daily_data[i] = update_tup_to_datetime(daily_data[i])  
         
-            insert_price_db(daily_data)
+            insert_price_db(con, daily_data)
 
         except Exception:
             failed_tickers.append(t[1])
             pass
             
     con.close()
-    print(print_db_stats(count))
+    print(print_db_stats(count, success_tickers))
     print(failed_tickers)
 
 
