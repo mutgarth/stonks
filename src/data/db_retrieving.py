@@ -69,8 +69,10 @@ def check_if_exists(tickers):
     printProgressBar(0, len(tickers), prefix = 'Checking DB:', suffix = 'Done', length = 50)
 
     for t in tickers:
-
-        query = sql % t[-1]
+        if len(t[-1]) < 3:
+            query = sql % t
+        else:
+            query = sql % t[-1]
         cursor = con.cursor()
         cursor.execute(query)
         if len(cursor.fetchall()) <= 0:
