@@ -39,6 +39,8 @@ def remove_duplicate(duplicates):
     for entry in duplicates:
         count +=1
         drop_list = duplicates_to_remove(entry)
+        printProgressBar(count, len(duplicates), prefix = 'Removing duplicates:', suffix = 'Done', length = 50)
+
         for i in drop_list:
             query = ("DELETE FROM symbol WHERE id = %s;" % i[0])
             execute_query(con,query)
@@ -65,6 +67,8 @@ if __name__ == '__main__':
     duplicates = check_duplicates()
     if len(duplicates) > 0:
         remove_duplicate(duplicates)
+        print('The following duplicates were removed: ')
+        print(duplicates)
 
     tickers = ret_tickers()
 
