@@ -27,6 +27,22 @@ def ret_adj_close(symbol):
     con.close()
     return dataframe
 
+def ret_prices(symbol):
+    con = db_connect()
+    sql = """SELECT dp.price_date, dp.adj_close_price,
+            dp.open_price, dp.high_price, dp.low_price,
+            dp.close_price
+            FROM symbol AS sym
+            INNER JOIN daily_price AS dp
+            ON dp.symbol_id = sym.id
+            WHERE sym.ticker = '%s'
+            ORDER BY dp.price_date ASC;"""
+        
+    sql = sql % symbol
+    dataframe = pd.read_sql_query(sql, con=con, index_col='price_date')
+    con.close()
+    return dataframe
+
 def ret_last_price_date(tickers):
     con = db_connect()
     sql = """SELECT dp.price_date, ticker
@@ -69,7 +85,7 @@ def check_if_exists(tickers):
     printProgressBar(0, len(tickers), prefix = 'Checking DB:', suffix = 'Done', length = 50)
 
     for t in tickers:
-        if len(t[-1]) < 3:
+        if len(t[-1]) < 2:
             query = sql % t
         else:
             query = sql % t[-1]
